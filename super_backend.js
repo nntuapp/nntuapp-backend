@@ -2,20 +2,12 @@ const sqlite3 = require('sqlite3').verbose();
 const fs = require('fs');
 const keys = require('./keys');
 
-db = new sqlite3.Database("appttable.db");
+const options = {
+    key: fs.readFileSync('/etc/ssl/nntuapp.reg.ru.key'),
+    cert: fs.readFileSync('/etc/ssl/nntuapp.reg.ru.crt')
+};
 
-// function backup(name){
-//     const today = new Date();
-//     const month = String(today.getMonth() + 1);
-//     const stringMoment = String(today.getDate()) + "." + month + "." + String(today.getFullYear()) + " " + String(today.getHours()) + "_" + String(today.getMinutes()) + "_" + String(today.getSeconds());
-//     fs.copyFile('appttable.db', 'backups/' + stringMoment + '.db', function(err){
-//         if (err){
-//             console.err('Произошла ошибка при копировании файла в папку бекапов, время: ' + stringMoment + ' Группа: ' + name, err);
-//         } else {
-//             console.log('Создан бекап от ' + stringMoment + ' Группа: ' + name);
-//         }
-//     });
-// }
+db = new sqlite3.Database("appttable.db");
 
 
 function addTimeTable(groupName, startTimes, stopTimes, days, weeks, rooms, names, types, teachers, notes){
@@ -93,6 +85,7 @@ function getTT(group ,_callback) {
 }
 
 var http = require("http");
+var https = require("https");
 const { get } = require('https');
 const { toNamespacedPath } = require('path');
 http.createServer(function(request, response){
@@ -113,9 +106,9 @@ http.createServer(function(request, response){
         function one(){
             getTT(groupName, function(estartTimes, estopTimes, edays, eweeks, erooms, enames, etypes, eteachers, enotes){
                 if (estartTimes.length != 0){
-                    response.writeHead(200, {"Content-Type": "application/json"});
+                    response.writeHead(200, {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type"});
                 } else {
-                    response.writeHead(404, {"Content-Type": "application/json"});
+                    response.writeHead(200, {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type"});
                 }
                 var json = JSON.stringify({
                     startTimes : estartTimes,
@@ -132,7 +125,14 @@ http.createServer(function(request, response){
             });
         }
         function two(){
-            response.writeHead(200, {"Content-Type": "application/json"});
+            response.writeHead(200, {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type"});
+            var json = JSON.stringify({
+                status: 'ok'
+            });
+            response.end(json);
+        }
+        function three(status){
+            response.writeHead(status, {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type"});
             var json = JSON.stringify({
                 status: 'ok'
             });
@@ -160,12 +160,48 @@ http.createServer(function(request, response){
                 types = jsonData.types;
                 teachers = jsonData.teachers;
                 notes = jsonData.notes;
-                addTimeTable(groupName, startTimes, stopTimes, days, weeks, rooms, names, types, teachers, notes);
+                try {
+                    addTimeTable(groupName, startTimes, stopTimes, days, weeks, rooms, names, types, teachers, notes);
+                } catch (e) {
+                    console.error('two', e)
+                }
                 two()
+            } else if (body.includes(keys.site())){
+                var jsonData = JSON.parse(body);
+                var status = 0;
+                groupName = jsonData.groupName;
+                var code = jsonData.code;
+                if (code == keys.encrypt(groupName)){
+                    status = 200;
+                    editing = true;
+                    startTimes = jsonData.startTimes;
+                    stopTimes = jsonData.stopTimes;
+                    days = jsonData.days;
+                    weeks = jsonData.weeks;
+                    rooms = jsonData.rooms;
+                    names = jsonData.names;
+                    types = jsonData.types;
+                    teachers = jsonData.teachers;
+                    notes = jsonData.notes;
+                    try {
+                        addTimeTable(groupName, startTimes, stopTimes, days, weeks, rooms, names, types, teachers, notes);
+                    } catch (e) {
+                        console.error('three', e)
+                    }
+                } else {
+                    status = 401;
+                }
+                three(status);
+            } else {
+                response.writeHead(400, {"Content-Type": "application/json"});
+                var json = JSON.stringify({
+                    status: 'ok'
+                });
+                response.end(json);
             }
         })
     } else {
-        response.writeHead(200, {"Content-Type": "text/html, charset = utf-8"});
+        response.writeHead(200, {"Content-Type": "text/html, charset = utf-8", "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type"});
         response.write("<DOCTYPE html>\n"+
         "<html>\n"+ 
         "<head>\n" +
@@ -178,4 +214,134 @@ http.createServer(function(request, response){
     }
 }).listen(3000, '0.0.0.0');
 // }).listen();
+https.createServer(options, function(request, response){
+    if (request.method == 'POST'){
+        var body = '';
+        var editing = false;
+        var groupName = '';
+        var startTimes = [];
+        var stopTimes = [];
+        var days = [];
+        var weeks = [];
+        var rooms = [];
+        var names = [];
+        var types = [];
+        var teachers = [];
+        var notes = [];
+
+        function one(){
+            getTT(groupName, function(estartTimes, estopTimes, edays, eweeks, erooms, enames, etypes, eteachers, enotes){
+                if (estartTimes.length != 0){
+                    response.writeHead(200, {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type"});
+                } else {
+                    response.writeHead(200, {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type"});
+                }
+                var json = JSON.stringify({
+                    startTimes : estartTimes,
+                    stopTimes : estopTimes,
+                    days: edays,
+                    weeks: eweeks,
+                    rooms: erooms,
+                    names: enames,
+                    types: etypes,
+                    teachers: eteachers,
+                    notes: enotes
+                });
+                response.end(json);
+            });
+        }
+        function two(){
+            response.writeHead(200, {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type"});
+            var json = JSON.stringify({
+                status: 'ok'
+            });
+            response.end(json);
+        }
+        function three(status){
+            response.writeHead(status, {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type"});
+            var json = JSON.stringify({
+                status: 'ok'
+            });
+            response.end(json);
+        }
+        request.on("data",function (data) {
+            body += data;
+            console.log('' + data);
+        })
+        request.on("end", function() {
+            if (body.includes(keys.receive())){ //Получение расписания
+                var jsonData = JSON.parse(body);
+                groupName += jsonData.groupName;
+                one()
+            } else if (body.includes(keys.post())){ //Редактирование расписания
+                editing = true;
+                var jsonData = JSON.parse(body);
+                groupName = jsonData.groupName;
+                startTimes = jsonData.startTimes;
+                stopTimes = jsonData.stopTimes;
+                days = jsonData.days;
+                weeks = jsonData.weeks;
+                rooms = jsonData.rooms;
+                names = jsonData.names;
+                types = jsonData.types;
+                teachers = jsonData.teachers;
+                notes = jsonData.notes;
+                try {
+			      	addTimeTable(groupName, startTimes, stopTimes, days, weeks, rooms, names, types, teachers, notes);
+				} catch (e) {
+					console.error('two', e)
+				}
+                
+                two()
+            } else if (body.includes(keys.site())){
+                var jsonData = JSON.parse(body);
+                var status = 0;
+                groupName = jsonData.groupName.replace(/-/g,'').replace(/ /g, '');
+                var tire = new RegExp(keys.encrypt('-'), 'g')
+                var space = new RegExp(keys.encrypt(' '), 'g')
+                var code = jsonData.code.replace(tire, '').replace(space, '');
+                console.log(keys.encrypt(groupName))
+                if (code == keys.encrypt(groupName)){
+                    status = 200;
+                    editing = true;
+                    startTimes = jsonData.startTimes;
+                    stopTimes = jsonData.stopTimes;
+                    days = jsonData.days;
+                    weeks = jsonData.weeks;
+                    rooms = jsonData.rooms;
+                    names = jsonData.names;
+                    types = jsonData.types;
+                    teachers = jsonData.teachers;
+                    notes = jsonData.notes;
+                    try {
+                        addTimeTable(groupName, startTimes, stopTimes, days, weeks, rooms, names, types, teachers, notes);
+                    } catch (e) {
+                        console.error('three', e)
+                    }
+                
+                } else {
+                    status = 401;
+                }
+                three(status);
+            } else {
+                response.writeHead(400, {"Content-Type": "application/json"});
+                var json = JSON.stringify({
+                    status: 'ok'
+                });
+                response.end(json);
+            }
+        })
+    } else {
+        response.writeHead(200, {"Content-Type": "text/html, charset = utf-8", "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type"});
+        response.write("<DOCTYPE html>\n"+
+        "<html>\n"+ 
+        "<head>\n" +
+        "<meta charset = 'utf-8'>\n" +
+        "</head>\n" +
+        "<body>\n");
+        response.write("Расписание не найдено")
+        response.end(" </body>\n </html>\n");
+        console.log("Кто-то попробовал попасть на страницу");
+    }
+}).listen(8000, '0.0.0.0');
 console.log("Сервер запущен ура!!!");

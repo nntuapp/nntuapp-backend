@@ -1,10 +1,7 @@
-# NNTU app backend
+### Бэкенд приложения НГТУ
 
-This is a second version of a backend of our app.
+Расписание и задачи
 
-## Previous Version
-The first app backend was very simple and was written in PHP. The data was stored as .txt files and then was parsed right on devies. It had a negative impact on a structure of a timetable - it was hard to modify, it had a rigit structure, in a word - it wasn't universal. So we decided to rebuild all the timetable structure from the ground up with all-new timetable structure and all-new backend. 
+Качество кода очень так себе, потому что это просто модифицированная лабораторная работа. Нужен рефакторинг. 
 
-## The new app backend
-New backend uses Node.js and SQLite, it is more versatile and much more easier to modify. We think it is a step in a right direction, for sure. 
-
+Чтобы влить изменение, достаточно открыть пулл-реквест и получить аппрув
